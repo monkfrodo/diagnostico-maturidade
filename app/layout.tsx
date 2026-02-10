@@ -29,6 +29,9 @@ export const metadata: Metadata = {
   title: "Diagnóstico de Maturidade de Negócio | Kevin — Íntegros",
   description:
     "14 perguntas pra descobrir se você tem um negócio de verdade ou um emprego disfarçado.",
+  icons: {
+    icon: "/favicon.png",
+  },
   openGraph: {
     title: "Diagnóstico de Maturidade de Negócio | Kevin — Íntegros",
     description:

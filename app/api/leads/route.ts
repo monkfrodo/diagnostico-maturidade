@@ -1,6 +1,14 @@
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isScore(val: unknown): val is number {
+  return typeof val === "number" && val >= 0 && val <= 100;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -23,7 +31,27 @@ export async function POST(request: Request) {
       respostas_json,
     } = body;
 
-    // Save to Vercel Postgres and send to ConvertKit in parallel
+    // Server-side validation
+    if (
+      typeof nome !== "string" || !nome.trim() ||
+      typeof email !== "string" || !isValidEmail(email) ||
+      typeof whatsapp !== "string" || whatsapp.replace(/\D/g, "").length !== 11 ||
+      !isScore(nota_geral) ||
+      typeof nivel !== "string" ||
+      !isScore(clareza) || !isScore(comercial) || !isScore(tempo) ||
+      !isScore(aquisicao) || !isScore(entrega) || !isScore(financeiro) ||
+      !isScore(equipe) ||
+      typeof ponto_forte !== "string" ||
+      typeof maior_gargalo !== "string" ||
+      typeof respostas_json !== "object"
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Invalid data" },
+        { status: 400 }
+      );
+    }
+
+    // Save to Postgres and send to Kit in parallel
     const [dbResult] = await Promise.allSettled([
       sql`
         INSERT INTO leads (
@@ -31,27 +59,17 @@ export async function POST(request: Request) {
           clareza, comercial, tempo, aquisicao, entrega,
           financeiro, equipe, ponto_forte, maior_gargalo, respostas_json
         ) VALUES (
-          ${nome}, ${email}, ${whatsapp}, ${nota_geral}, ${nivel},
+          ${nome.trim()}, ${email.trim().toLowerCase()}, ${whatsapp},
+          ${nota_geral}, ${nivel},
           ${clareza}, ${comercial}, ${tempo}, ${aquisicao}, ${entrega},
           ${financeiro}, ${equipe}, ${ponto_forte}, ${maior_gargalo},
           ${JSON.stringify(respostas_json)}
         )
       `,
-      sendToConvertKit({
-        email,
-        nome,
+      sendToKit({
+        email: email.trim().toLowerCase(),
+        nome: nome.trim(),
         whatsapp,
-        nota_geral,
-        nivel,
-        clareza,
-        comercial,
-        tempo,
-        aquisicao,
-        entrega,
-        financeiro,
-        equipe,
-        ponto_forte,
-        maior_gargalo,
       }),
     ]);
 
@@ -69,32 +87,16 @@ export async function POST(request: Request) {
   }
 }
 
-async function sendToConvertKit(data: {
+async function sendToKit(data: {
   email: string;
   nome: string;
   whatsapp: string;
-  nota_geral: number;
-  nivel: string;
-  clareza: number;
-  comercial: number;
-  tempo: number;
-  aquisicao: number;
-  entrega: number;
-  financeiro: number;
-  equipe: number;
-  ponto_forte: string;
-  maior_gargalo: string;
 }) {
   const apiKey = process.env.CONVERTKIT_API_KEY;
   const tagId = process.env.CONVERTKIT_TAG_ID;
 
-  if (!apiKey) {
-    console.warn("CONVERTKIT_API_KEY not set, skipping ConvertKit");
-    return;
-  }
-
-  if (!tagId) {
-    console.warn("CONVERTKIT_TAG_ID not set, skipping ConvertKit");
+  if (!apiKey || !tagId) {
+    console.warn("Kit env vars not set, skipping");
     return;
   }
 
@@ -116,6 +118,6 @@ async function sendToConvertKit(data: {
 
   if (!response.ok) {
     const text = await response.text();
-    console.error("ConvertKit error:", response.status, text);
+    console.error("Kit error:", response.status, text);
   }
 }
