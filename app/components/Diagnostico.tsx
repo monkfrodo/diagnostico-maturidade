@@ -402,24 +402,19 @@ export default function Diagnostico() {
                 um emprego disfarçado que você mesmo criou.
               </p>
 
-              <div className="grid grid-cols-2 gap-3 mb-10">
+              <div className="flex flex-wrap justify-center gap-2.5 mb-10">
                 {DIMENSIONS.map((dim) => (
                   <div
                     key={dim.id}
-                    className="flex items-center gap-2.5 px-4 py-3 rounded-lg"
-                    style={{ background: "#F3EDE4" }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg"
+                    style={{
+                      background: "#F3EDE4",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: "#2A1F17",
+                    }}
                   >
-                    <span style={{ fontSize: 18 }}>{dim.icon}</span>
-                    <span
-                      className="text-left"
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: "#2A1F17",
-                      }}
-                    >
-                      {dim.name}
-                    </span>
+                    {dim.icon} {dim.name}
                   </div>
                 ))}
               </div>
