@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Save to Postgres and send to Kit in parallel
+    // Save to Postgres, send to Kit, and send to CRM in parallel
     const [dbResult] = await Promise.allSettled([
       sql`
         INSERT INTO leads (
@@ -70,6 +70,23 @@ export async function POST(request: Request) {
         email: email.trim().toLowerCase(),
         nome: nome.trim(),
         whatsapp,
+      }),
+      sendToCRM({
+        nome: nome.trim(),
+        email: email.trim().toLowerCase(),
+        whatsapp,
+        nota_geral,
+        nivel,
+        clareza,
+        comercial,
+        tempo,
+        aquisicao,
+        entrega,
+        financeiro,
+        equipe,
+        ponto_forte,
+        maior_gargalo,
+        respostas_json,
       }),
     ]);
 
@@ -119,5 +136,40 @@ async function sendToKit(data: {
   if (!response.ok) {
     const text = await response.text();
     console.error("Kit error:", response.status, text);
+  }
+}
+
+async function sendToCRM(data: {
+  nome: string;
+  email: string;
+  whatsapp: string;
+  nota_geral: number;
+  nivel: string;
+  clareza: number;
+  comercial: number;
+  tempo: number;
+  aquisicao: number;
+  entrega: number;
+  financeiro: number;
+  equipe: number;
+  ponto_forte: string;
+  maior_gargalo: string;
+  respostas_json: object;
+}) {
+  const crmUrl = process.env.CRM_WEBHOOK_URL;
+  if (!crmUrl) {
+    console.warn("CRM_WEBHOOK_URL not set, skipping");
+    return;
+  }
+
+  const response = await fetch(crmUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error("CRM webhook error:", response.status, text);
   }
 }
